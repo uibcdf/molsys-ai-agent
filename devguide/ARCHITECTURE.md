@@ -2,7 +2,7 @@
 
 ## Mission
 
-Operate MolSysSuite as a specialized agent while keeping inference/software knowledge remote-capable and scientific execution close to the molecular data and tool environment.
+Operate MolSysSuite as a specialized agent while keeping scientific execution close to molecular data/tool environments and allowing inference/software knowledge to be local or remote.
 
 ## Main responsibilities
 
@@ -11,20 +11,31 @@ Operate MolSysSuite as a specialized agent while keeping inference/software know
 - execution and recovery;
 - local molecular/session interaction where required;
 - verification of symbols, signatures, defaults, and documentation before execution;
-- communication with MolSys-AI Server through MolSys-AI Client.
+- optional consumption of MolSys-AI Software Knowledge and inference services.
+
+## Backend independence
+
+The Agent should not require a single fixed topology.
+
+Possible paths include:
+
+```text
+Agent → MolSysSuite directly
+Agent → MolSys-AI Client → MolSys-AI Server
+Agent → local model/knowledge backend
+Agent → other authorized backend
+```
+
+MolSys-AI Client is the preferred typed interface to MolSys-AI Server when remote services are used, but Server availability is not an architectural prerequisite for every agent operation.
+
+## Software Knowledge
+
+The Agent should consume software knowledge through stable contracts rather than importing the server's RAG implementation. RAG, symbol cards, recipes, and retrieval internals remain server-side knowledge-service concerns when the server is used.
 
 ## Environment boundary
 
-The MolSysSuite execution environment should remain separable from the server-side model-inference environment. This preserves dependency isolation and allows local, HPC, or other scientific execution backends.
+MolSysSuite execution should remain separable from server-side model inference. This supports local, HPC, remote, or hybrid execution without coupling scientific toolchains to the inference environment.
 
 ## Relationship with MOLI
 
 MOLI Agent may delegate modeling-specialist tasks to MolSys-AI Agent. MolSys-AI Agent returns outputs/observations; it does not own Nextia Evidence or scientific Decisions.
-
-## Non-goals
-
-- owning remote inference infrastructure;
-- owning the MolSysSuite software-knowledge corpus;
-- becoming the lightweight transport SDK;
-- becoming MOLI Agent;
-- becoming the authoritative DiscoveryProject store.
