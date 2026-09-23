@@ -2,79 +2,59 @@
 
 This document classifies legacy code currently living in `molsys-ai-server/client/`. It is a migration map, not an instruction to delete working code immediately.
 
-## Protected first functionality: documentation chatbot
+## Protected first capability
 
-The documentation chatbot is the first operational MolSys-AI functionality and must remain working throughout migration.
+The documentation chatbot is the first operational MolSys-AI capability. Migration must preserve equivalent or better grounded documentation assistance, but does **not** freeze its current endpoint, RAG implementation, schemas, or widget internals.
 
-Protected server behavior includes:
-
-- `POST /v1/chat`;
-- multi-turn `messages` support and legacy `query` compatibility while supported;
-- RAG corpus/index construction and retrieval;
-- citations and `sources`;
-- anchors/deep links;
-- symbol verification and re-reading;
-- documentation widget integration;
-- model-server integration;
-- current authentication/CORS/deployment path;
-- chatbot benchmarks and smoke tests.
-
-No agent/client extraction is complete if these regress.
+See the server's `devguide/CHATBOT_PRESERVATION.md`.
 
 ## File classification
 
 | Current file | Responsibility | Destination | Migration note |
 |---|---|---|---|
 | `client/agent/core.py` | agent loop/orchestration | `molsys-ai-agent` | migrate/refactor |
-| `client/agent/executor.py` | local tool registry/execution | `molsys-ai-agent` | migrate; strengthen validation/authorization |
-| `client/agent/planner.py` | specialist planning/tool selection | `molsys-ai-agent` | migrate; remove direct legacy RAG ownership |
-| `client/agent/notebook.py` | notebook-facing agent helpers/workflow generation | `molsys-ai-agent` | migrate after public API decision |
-| `client/agent/tools/core_tools.py` | local machine/shell tools | `molsys-ai-agent` | migrate with strict approval/security policy |
-| `client/agent/tools/molsysmt_tools.py` | MolSysMT adapter prototype | `molsys-ai-agent` | migrate as first MolSysSuite adapter |
-| `client/agent/model_client.py` | direct HTTP/model abstraction | split/replace | remote transport belongs to `molsys-ai-client`; agent-facing model interface may remain in agent |
-| `client/cli/config.py` | endpoint/API-key configuration | `molsys-ai-client` | migrate into SDK configuration/profile layer |
-| `client/cli/http_api.py` | HTTP transport for chat/engine APIs | `molsys-ai-client` | migrate/refactor into typed client |
-| `client/cli/main.py` | mixed CLI surface | split | chat/docs/login/config → client-facing CLI decision; agent/tools → `molsys-ai-agent` |
-| `client/agent/__init__.py` | package marker/exports | `molsys-ai-agent` | recreate under new package namespace |
-| `client/cli/__init__.py` | package marker | depends on CLI packaging | do not copy blindly |
+| `client/agent/executor.py` | local tool registry/execution | `molsys-ai-agent` | strengthen validation/authorization |
+| `client/agent/planner.py` | specialist planning/tool selection | `molsys-ai-agent` | remove direct ownership of server RAG |
+| `client/agent/notebook.py` | notebook agent helpers | `molsys-ai-agent` | migrate after API decision |
+| `client/agent/tools/core_tools.py` | local tools | `molsys-ai-agent` | strict approval/security policy |
+| `client/agent/tools/molsysmt_tools.py` | MolSysMT adapter prototype | `molsys-ai-agent` | first MolSysSuite adapter candidate |
+| `client/agent/model_client.py` | model abstraction + direct HTTP | split/replace | transport → client; backend abstraction may remain agent-side |
+| `client/cli/config.py` | endpoint/API-key config | `molsys-ai-client` | SDK configuration/profile layer |
+| `client/cli/http_api.py` | HTTP transport | `molsys-ai-client` | typed client |
+| `client/cli/main.py` | mixed CLI | split | remote UX vs agent/tool UX |
 
 ## Special cases
 
 ### planner.py
 
-The current planner performs documentation-RAG retrieval directly. In the target architecture the Agent should not own the server RAG implementation. Software-knowledge queries should go through MolSys-AI Client → MolSys-AI Server contracts.
+The current planner imports RAG directly. Target Agent code should consume Software Knowledge through a stable interface when needed; it should not own/import server retrieval internals.
 
 ### model_client.py
 
-`HTTPModelClient` currently calls `/v1/engine/chat` directly. Target code should prefer the typed MolSys-AI Client. Keep an agent-side abstract model/reasoning interface only if it remains useful after the SDK exists.
+The current direct HTTP implementation should evolve toward MolSys-AI Client for server access. An agent-side abstract backend interface may remain so local/alternative backends are possible.
 
 ### cli/main.py
 
-This file contains two products:
-
-1. remote-service UX: login/config/chat/docs;
-2. local specialist-agent UX: agent/tools.
-
-It must be decomposed by responsibility. Moving the whole file to either repository would reproduce the current boundary problem.
+The file mixes remote-service UX and local specialist-agent UX and must be decomposed rather than moved wholesale.
 
 ## Tests
 
-Current `tests/test_smoke.py` mixes server, RAG, CLI and agent imports. Before deleting legacy modules:
+Before deleting legacy modules:
 
-1. establish a **server/chatbot protected test gate** containing only server-owned imports and chatbot behavior;
+1. establish a server-owned chatbot/Software-Knowledge capability gate;
 2. migrate agent tests to `molsys-ai-agent`;
-3. migrate client transport/config tests to `molsys-ai-client`;
-4. retain temporary compatibility tests in the server until legacy imports are removed.
+3. migrate client tests to `molsys-ai-client`;
+4. retain compatibility tests until legacy imports disappear.
 
 ## Safe migration order
 
-1. Freeze and run chatbot baseline tests/benchmarks.
-2. Implement minimal typed client transport without changing server endpoints.
-3. Copy/refactor agent primitives into `molsys-ai-agent`, initially against the existing server API through the client.
-4. Reproduce agent tests in the new repo.
+1. Baseline the working chatbot capability.
+2. Implement minimal typed Client without requiring server endpoint redesign.
+3. Establish Agent primitives in `molsys-ai-agent`; server access, when used, goes through stable Client contracts.
+4. Reproduce Agent tests.
 5. Split CLI ownership.
-6. Mark server legacy modules deprecated.
-7. Verify chatbot and agent/client compatibility.
-8. Only then remove legacy client/agent packaging from the server.
+6. Mark legacy modules deprecated.
+7. Verify chatbot capability plus client/agent compatibility.
+8. Remove legacy code only then.
 
-The server chatbot is a protected operational capability throughout all phases.
+The goal is a cleaner architecture **without sacrificing the first working MolSys-AI capability**.
